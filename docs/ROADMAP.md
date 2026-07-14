@@ -4,14 +4,19 @@ Rough sequencing. Playtest feel decides most forks before code does.
 
 ## Near
 
-- **Persistence** — save/load once out of the artifact sandbox (the pipeline
-  targets single-HTML; localStorage works fine in a normal deploy).
-- **Calling UX** — the loadout editor is the last v0-era DOM screen; it
-  probably wants drag ordering and cost preview against the current caps.
-- **Progressive disclosure** — the Lattice was designed as the pacing device;
-  the UI should honor it. First session: Proving + a number going up + one
-  thing to buy. Hush and Lattice reveal themselves.
+- **Calling UX** — cost preview shipped; drag ordering still wanted.
 - **Crescendo banking order** — decide pre- vs post-bank from feel.
+- **Offline training** — persistence ships state-only; the away-time
+  question is now open in DESIGN.md and needs a human call.
+
+## Shipped from this list
+
+- **Persistence** — v1 save in localStorage: autosave (5s + on hide),
+  versioned, defensive parse; smoke covers the round-trip. Mid-fight
+  state is deliberately not saved.
+- **Progressive disclosure** — first session is the Proving alone; the
+  first rotation reveals the Lattice, the first node reveals the Hush,
+  the first crossing reveals Rings (with threshold safety valves).
 
 ## Mid
 

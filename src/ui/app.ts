@@ -1,6 +1,7 @@
 import { Expedition } from '../game/expedition';
+import { parseSave, serialize } from '../game/persist';
 import { effStats, meltValue, RARITY_COLORS, RARITY_NAMES } from '../game/rings';
-import { attCap, fold, meltRing, newGame, tetherCap, type GameState } from '../game/state';
+import { attCap, fold, meltRing, newGame, tetherCap, type GameState, type Reveals } from '../game/state';
 import { Training } from '../game/training';
 import { HushScene } from '../scenes/hush';
 import { ProvingScene } from '../scenes/proving';
@@ -15,9 +16,11 @@ type Tab = 'proving' | 'hush' | 'rings' | 'lattice';
 /** Shell only. The two scenes are siblings that share nothing:
  *  - ProvingScene lives as long as the app.
  *  - HushScene is created with an expedition and destroyed with it. */
+const SAVE_KEY = 'ringveil_save';
+
 export class App {
-  st: GameState = newGame();
-  training = new Training(this.st);
+  st: GameState;
+  training: Training;
   proving: ProvingScene;
   hush: HushScene | null = null;
   expedition: Expedition | null = null;
@@ -29,10 +32,19 @@ export class App {
   /** live-refresh hooks for the Rings view (XP bars, status chips) —
    *  targeted pokes, never DOM churn; rebuilt on every render */
   private ringsUpdaters: Array<() => void> = [];
+  /** when each tab was revealed, for the brief arrival pulse */
+  private revealTimes = new Map<Tab, number>();
+  private resetArmed = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
+    this.st = this.loadSave() ?? newGame();
+    this.training = new Training(this.st);
     this.proving = new ProvingScene(this.st, this.training);
+    // the first finished rotation is the moment the Lattice makes sense
+    this.training.events.on((e) => {
+      if (e.t === 'rotate' && !this.st.reveals.lattice) this.reveal('lattice');
+    });
     setInterval(() => this.training.tick(), 500);
     setInterval(() => {
       if (this.expedition && !this.expedition.over) this.expedition.tick();
@@ -40,11 +52,73 @@ export class App {
     // slow, targeted refresh: numbers only, never DOM churn
     setInterval(() => {
       if (this.walletEl) this.walletEl.textContent = this.walletText();
+      this.checkRevealFallbacks();
     }, 1000);
     setInterval(() => {
       if (this.tab === 'rings') for (const u of this.ringsUpdaters) u();
     }, 1500);
+    // autosave: steady cadence plus every backgrounding/close
+    setInterval(() => this.save(), 5000);
+    addEventListener('pagehide', () => this.save());
+    addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.save();
+    });
     this.render();
+  }
+
+  // ---------------- persistence ----------------
+
+  private loadSave(): GameState | null {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      return raw ? parseSave(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** set once the player wipes — the pagehide autosave must not
+   *  resurrect the save on the way out */
+  private wiped = false;
+
+  private save(): void {
+    if (this.wiped) return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(this.st)));
+    } catch {
+      // storage unavailable (private mode, quota) — play on, in memory
+    }
+  }
+
+  private wipeSave(): void {
+    this.wiped = true;
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch {
+      // nothing to lose
+    }
+    location.reload();
+  }
+
+  // ---------------- progressive disclosure ----------------
+
+  private reveal(k: keyof Reveals): void {
+    if (this.st.reveals[k]) return;
+    this.st.reveals[k] = true;
+    this.revealTimes.set(k, Date.now());
+    this.save();
+    // don't stomp the veil-closing beat with a re-render
+    const closing = this.expedition?.over && this.hush;
+    if (!closing) this.render();
+  }
+
+  private checkRevealFallbacks(): void {
+    // organic triggers: first rotation → Lattice; first node → Hush; first
+    // crossing → Rings. These thresholds are safety valves so no path stalls.
+    const r = this.st.reveals;
+    if (!r.lattice && this.st.shards >= 60) this.reveal('lattice');
+    if (!r.hush && (this.st.latticeOwned.length > 0 || this.st.shards >= 80)) this.reveal('hush');
+    if (!r.rings && this.st.bestWave > 0) this.reveal('rings');
   }
 
   // ---------------- actions ----------------
@@ -58,8 +132,16 @@ export class App {
     this.expedition = new Expedition(this.st, rings);
     this.hush = new HushScene(this.st, this.expedition);
     this.expedition.events.on((e) => {
-      // let the scene play the veil-closing beat before the summary appears
-      if (e.t === 'end') setTimeout(() => this.render(), 2200);
+      if (e.t === 'end') {
+        // the first crossing earns the Rings tab — flag it quietly now so
+        // it's waiting behind the veil-closing beat, then show the summary
+        if (!this.st.reveals.rings) {
+          this.st.reveals.rings = true;
+          this.revealTimes.set('rings', Date.now());
+        }
+        this.save();
+        setTimeout(() => this.render(), 2200);
+      }
     });
     this.render();
   }
@@ -69,6 +151,7 @@ export class App {
     this.hush = null;
     this.expedition = null;
     this.training.clearAway();
+    this.save();
     this.render();
   }
 
@@ -97,11 +180,12 @@ export class App {
   }
 
   private tabbar(): HTMLElement {
-    const mk = (t: Tab, label: string) =>
-      h(
+    const mk = (t: Tab, label: string) => {
+      const fresh = (Date.now() - (this.revealTimes.get(t) ?? -Infinity)) < 6000;
+      return h(
         'button',
         {
-          class: `tab ${this.tab === t ? 'active' : ''}`,
+          class: `tab ${this.tab === t ? 'active' : ''} ${fresh ? 'tab-new' : ''}`,
           onclick: () => {
             this.tab = t;
             this.render();
@@ -109,7 +193,12 @@ export class App {
         },
         label,
       );
-    return h('nav', { class: 'tabbar' }, mk('proving', 'Proving'), mk('hush', 'Hush'), mk('rings', 'Rings'), mk('lattice', 'Lattice'));
+    };
+    const tabs: HTMLElement[] = [mk('proving', 'Proving')];
+    if (this.st.reveals.hush) tabs.push(mk('hush', 'Hush'));
+    if (this.st.reveals.rings) tabs.push(mk('rings', 'Rings'));
+    if (this.st.reveals.lattice) tabs.push(mk('lattice', 'Lattice'));
+    return h('nav', { class: 'tabbar' }, ...tabs);
   }
 
   private body(): HTMLElement {
@@ -366,7 +455,24 @@ export class App {
         this.selectedNode = id;
         this.render();
       },
-      onChanged: () => this.render(),
+      onChanged: () => {
+        this.save();
+        this.checkRevealFallbacks();
+        this.render();
+      },
+      resetArmed: this.resetArmed,
+      onReset: () => {
+        if (!this.resetArmed) {
+          this.resetArmed = true;
+          this.render();
+          setTimeout(() => {
+            this.resetArmed = false;
+            this.render();
+          }, 3500);
+        } else {
+          this.wipeSave();
+        }
+      },
     });
   }
 }

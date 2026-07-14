@@ -1,5 +1,6 @@
 /* Headless sanity: engines are DOM-free by design, so we can sim them in node. */
 import { Expedition } from './game/expedition';
+import { parseSave, serialize } from './game/persist';
 import { generateRing } from './game/rings';
 import { buyNode, fold, newGame } from './game/state';
 import { Training } from './game/training';
@@ -43,6 +44,15 @@ let ticks = 0;
 while (!ex.over && ticks++ < 3000) ex.tick();
 if (summons === 0) throw new Error('no rings were ever summoned');
 if (ex.wave < 2) throw new Error(`expedition died on wave ${ex.wave} — tuning is off`);
+
+// persistence round-trip: the save must reproduce the state, RNG stream included
+const restored = parseSave(JSON.stringify(serialize(st)));
+if (!restored) throw new Error('save did not parse back');
+if (restored.rings.length !== st.rings.length) throw new Error('rings lost in round-trip');
+if (restored.latticeOwned.join() !== st.latticeOwned.join()) throw new Error('lattice lost in round-trip');
+if (Math.floor(restored.shards) !== Math.floor(st.shards)) throw new Error('shards lost in round-trip');
+if (restored.rng.next() !== st.rng.next()) throw new Error('rng stream diverged after restore');
+if (parseSave('{"v":999}') !== null || parseSave('not json') !== null) throw new Error('bad saves must yield null');
 
 console.log(
   JSON.stringify(

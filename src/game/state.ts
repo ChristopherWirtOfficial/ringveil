@@ -11,6 +11,14 @@ export interface Upgrades {
   trainSlots: number;
 }
 
+/** Progressive disclosure: the UI reveals surfaces as play earns them.
+ *  Pure presentation gating — engines never read these. */
+export interface Reveals {
+  lattice: boolean;
+  hush: boolean;
+  rings: boolean;
+}
+
 export interface GameState {
   rng: Rng;
   shards: number;
@@ -23,6 +31,7 @@ export interface GameState {
   keepThreshold: Rarity;
   autoPull: boolean;
   bestWave: number;
+  reveals: Reveals;
 }
 
 export const BASE_ATT_CAP = 4;
@@ -95,6 +104,7 @@ export function newGame(seed?: number): GameState {
     keepThreshold: 1,
     autoPull: true,
     bestWave: 0,
+    reveals: { lattice: false, hush: false, rings: false },
   };
   const f = fold(st);
   for (let i = 0; i < 3; i++) st.rings.push(generateRing(0, f, rng));

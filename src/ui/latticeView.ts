@@ -188,7 +188,13 @@ function foundry(st: GameState, onChanged: () => void): HTMLElement[] {
 
 export function latticeView(
   st: GameState,
-  opts: { selected: string | null; onSelect: (id: string | null) => void; onChanged: () => void },
+  opts: {
+    selected: string | null;
+    onSelect: (id: string | null) => void;
+    onChanged: () => void;
+    resetArmed: boolean;
+    onReset: () => void;
+  },
 ): HTMLElement {
   const v = h('section', {});
   v.append(
@@ -204,6 +210,16 @@ export function latticeView(
     nodeDetail(st, opts.selected, opts.onChanged),
     h('h3', { class: 'cluster-label' }, 'The Foundry — permanent'),
     ...foundry(st, opts.onChanged),
+    h(
+      'div',
+      { class: 'begin-again' },
+      h(
+        'button',
+        { class: 'mini danger', onclick: opts.onReset },
+        opts.resetArmed ? 'Tap again to wipe everything' : 'Begin again',
+      ),
+      h('span', { class: 'tiny dim' }, opts.resetArmed ? 'this erases the save — no way back' : 'abandon this life; the veil forgets'),
+    ),
   );
   return v;
 }

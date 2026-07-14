@@ -4,6 +4,13 @@ export class Rng {
   constructor(seed = Date.now() >>> 0) {
     this.s = seed >>> 0;
   }
+  /** Snapshot / restore — persistence saves the stream mid-flight. */
+  get state(): number {
+    return this.s;
+  }
+  setState(s: number): void {
+    this.s = s >>> 0;
+  }
   next(): number {
     this.s = (this.s + 0x6d2b79f5) >>> 0;
     let t = this.s;

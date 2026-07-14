@@ -70,7 +70,7 @@ button.danger { border-color: var(--danger); color: var(--danger); }
 .tabbar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 560px;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   background: color-mix(in srgb, var(--bg) 88%, black);
   border-top: 1px solid var(--line);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
@@ -78,6 +78,11 @@ button.danger { border-color: var(--danger); color: var(--danger); }
 }
 .tab { border: none; background: transparent; color: var(--ink-dim); padding: 10px 0; font-size: 14px; }
 .tab.active { color: var(--bronze); font-weight: 600; }
+.tab-new { animation: tabreveal 1.4s ease-in-out 4; }
+@keyframes tabreveal {
+  0%, 100% { color: var(--ink-dim); }
+  50% { color: var(--verdigris); }
+}
 
 .ring-glyph { flex-shrink: 0; }
 
@@ -187,6 +192,11 @@ button:disabled { opacity: 0.45; cursor: default; }
 .lattice-detail {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 12px; min-height: 76px;
+}
+.begin-again {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 26px; padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 @media (prefers-reduced-motion: reduce) {

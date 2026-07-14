@@ -113,4 +113,11 @@ at 3× weight. Off-build affixes always remain possible.
   as semi-scarce resource? Untested.
 - **Unique training cost** — count double? Depends whether unique leveling
   matters enough for the tax to bind.
-- **Persistence** — none in the artifact prototype; trivial in a real deploy.
+- **Offline training** — the save stores state only; rings train only while
+  the game is open. Whether time away should grant training (capped? at what
+  efficiency?) is undecided — it pulls between "rings train on their own"
+  and the no-wall-clock philosophy. Decide before mobile players decide
+  for us.
+- **Ring acquisition beyond drops** — the home side never grows the
+  collection; a forge/gacha mechanic was sketched (melt↔forge symmetry,
+  pity meter) and deliberately parked for its own discussion.

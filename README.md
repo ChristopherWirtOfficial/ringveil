@@ -36,4 +36,5 @@ Engines are complete for the v0 slice: expeditions (queue → worn → discard,
 paid summons, attunement window, waves, drops, auto-melt), training (emergent
 rotation, swell quota procs, XP/levels), the Lattice (free respec, 3× loot
 skew), and the Foundry ratchet. Rendering is two independent canvas scenes.
-No persistence yet — sessions are in-memory.
+Progress persists in localStorage (autosaved, versioned); surfaces reveal
+progressively on a fresh save.
