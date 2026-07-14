@@ -1,26 +1,13 @@
-import { LATTICE } from '../data/lattice';
 import { Expedition } from '../game/expedition';
-import { effStats, RARITY_NAMES } from '../game/rings';
-import {
-  attCap,
-  buyNode,
-  buyUpgrade,
-  fold,
-  meltRing,
-  newGame,
-  respec,
-  tetherCap,
-  trainSlots,
-  upgradeCost,
-  type GameState,
-  type Upgrades,
-} from '../game/state';
+import { effStats, meltValue, RARITY_COLORS, RARITY_NAMES } from '../game/rings';
+import { attCap, fold, meltRing, newGame, tetherCap, type GameState } from '../game/state';
 import { Training } from '../game/training';
 import { HushScene } from '../scenes/hush';
 import { ProvingScene } from '../scenes/proving';
 import type { Rarity, Ring } from '../types';
 import { clear, h } from './dom';
-import { ringCard, ringDetail } from './ringCard';
+import { latticeView } from './latticeView';
+import { ringCard, ringDetail, type RingStatus } from './ringCard';
 import { ringGlyph } from './ringGlyph';
 
 type Tab = 'proving' | 'hush' | 'rings' | 'lattice';
@@ -36,8 +23,12 @@ export class App {
   expedition: Expedition | null = null;
   tab: Tab = 'proving';
   selectedRing: string | null = null;
+  selectedNode: string | null = null;
   root: HTMLElement;
   private walletEl: HTMLElement | null = null;
+  /** live-refresh hooks for the Rings view (XP bars, status chips) —
+   *  targeted pokes, never DOM churn; rebuilt on every render */
+  private ringsUpdaters: Array<() => void> = [];
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -50,6 +41,9 @@ export class App {
     setInterval(() => {
       if (this.walletEl) this.walletEl.textContent = this.walletText();
     }, 1000);
+    setInterval(() => {
+      if (this.tab === 'rings') for (const u of this.ringsUpdaters) u();
+    }, 1500);
     this.render();
   }
 
@@ -80,8 +74,11 @@ export class App {
   // ---------------- render ----------------
 
   render(): void {
+    const prevScroll = this.root.querySelector('main')?.scrollTop ?? 0;
     clear(this.root);
-    this.root.append(this.header(), this.body(), this.tabbar());
+    const body = this.body();
+    this.root.append(this.header(), body, this.tabbar());
+    body.scrollTop = prevScroll;
   }
 
   private walletText(): string {
@@ -243,10 +240,32 @@ export class App {
 
   // ---------------- Rings ----------------
 
+  private ringStatus(id: string): RingStatus {
+    if (this.training.away.has(id)) return 'away';
+    if (this.training.active.some((a) => a.ring.id === id)) return 'sparring';
+    return 'waiting';
+  }
+
   private viewRings(): HTMLElement {
+    this.ringsUpdaters = [];
     const f = fold(this.st);
     const v = h('section', {});
-    v.append(h('div', { class: 'section-head' }, h('h2', {}, 'Collection'), h('div', { class: 'dim small' }, `${this.st.rings.length} rings`)));
+
+    // header: count + rarity spread at a glance
+    const counts = new Map<Rarity, number>();
+    for (const r of this.st.rings) counts.set(r.rarity, (counts.get(r.rarity) ?? 0) + 1);
+    const dots = h('span', { class: 'rarity-dots' });
+    ([4, 3, 2, 1, 0] as Rarity[]).forEach((r) => {
+      const n = counts.get(r);
+      if (!n) return;
+      dots.append(h('span', { class: 'rd', title: RARITY_NAMES[r]! }, h('i', { style: `background:${RARITY_COLORS[r]}` }), String(n)));
+    });
+    v.append(h('div', { class: 'section-head' }, h('h2', {}, 'Collection'), dots));
+    v.append(
+      h('p', { class: 'dim small note' },
+        'New rings fall in the Hush — cross the veil to find them. Bronze-edged marks are the rare knobs that warp a build.'),
+    );
+
     const thresh = h('select', {
       onchange: (e: Event) => {
         this.st.keepThreshold = Number((e.target as HTMLSelectElement).value) as Rarity;
@@ -258,9 +277,20 @@ export class App {
       thresh.append(opt);
     });
     v.append(h('div', { class: 'small dim threshold' }, thresh));
-    for (const ring of this.st.rings) {
+
+    const sorted = [...this.st.rings].sort(
+      (a, b) => b.rarity - a.rarity || b.level - a.level || a.name.localeCompare(b.name),
+    );
+    if (sorted.length === 0) v.append(h('p', { class: 'empty' }, 'No rings. The Hush provides — cross the veil.'));
+    for (const ring of sorted) {
       v.append(
         ringCard(ring, f, {
+          status: this.ringStatus(ring.id),
+          inCalling: this.st.loadout.includes(ring.id),
+          live: {
+            status: () => this.ringStatus(ring.id),
+            register: (fn) => this.ringsUpdaters.push(fn),
+          },
           onClick: () => {
             this.selectedRing = this.selectedRing === ring.id ? null : ring.id;
             this.render();
@@ -278,7 +308,7 @@ export class App {
               'div',
               { class: 'actions' },
               h('button', { class: 'mini', onclick: () => this.toggleLoadout(ring.id) }, inLoadout ? 'Remove from Calling' : 'Add to Calling'),
-              h('button', { class: 'mini danger', onclick: () => { meltRing(this.st, ring.id); this.selectedRing = null; this.render(); } }, 'Melt'),
+              h('button', { class: 'mini danger', onclick: () => { meltRing(this.st, ring.id); this.selectedRing = null; this.render(); } }, `Melt +${meltValue(ring)}◆`),
             ),
           ),
         );
@@ -290,55 +320,13 @@ export class App {
   // ---------------- Lattice ----------------
 
   private viewLattice(): HTMLElement {
-    const v = h('section', {});
-    v.append(
-      h(
-        'div',
-        { class: 'section-head' },
-        h('h2', {}, 'The Lattice'),
-        h('button', { class: 'mini', onclick: () => { respec(this.st); this.render(); } }, 'Respec (free)'),
-      ),
-      h('p', { class: 'dim small note' },
-        'Nodes unlock primitives; affixes scale what is unlocked, and unlocks skew loot (3×) without gating it. Resonance is the starting cluster.'),
-    );
-    const clusters: Array<['resonance' | 'core', string]> = [
-      ['resonance', 'Resonance — the starting cluster'],
-      ['core', 'Core'],
-    ];
-    for (const [cl, label] of clusters) {
-      v.append(h('h3', { class: 'cluster-label' }, label));
-      for (const node of LATTICE.filter((n) => n.cluster === cl)) {
-        const owned = this.st.latticeOwned.includes(node.id);
-        const blocked = node.requires && !this.st.latticeOwned.includes(node.requires);
-        const card = h(
-          'div',
-          { class: `node ${owned ? 'owned' : ''}` },
-          h('div', { class: 'node-head' }, h('strong', {}, node.name), h('span', { class: 'mono dim' }, owned ? '●' : `◆${node.cost}`)),
-          h('div', { class: 'small dim' }, node.desc),
-        );
-        if (!owned && !blocked) card.append(h('button', { class: 'mini', onclick: () => { buyNode(this.st, node.id); this.render(); } }, 'Learn'));
-        if (blocked) card.append(h('div', { class: 'tiny dim' }, `requires ${node.requires}`));
-        v.append(card);
-      }
-    }
-    v.append(h('h3', { class: 'cluster-label' }, 'The Foundry — permanent'));
-    const ups: Array<[keyof Upgrades, string, string]> = [
-      ['attCap', 'Widen attunement', `⟟ window +1 (now ${attCap(this.st)})`],
-      ['tetherCap', 'Deepen the pool', `◈ Tether +2 (now ${tetherCap(this.st)})`],
-      ['trainSlots', 'Raise the quota', `training slots +1 (now ${trainSlots(this.st)})`],
-    ];
-    for (const [kind, name, desc] of ups) {
-      const cost = upgradeCost(kind, this.st.upgrades[kind]);
-      v.append(
-        h(
-          'div',
-          { class: 'node' },
-          h('div', { class: 'node-head' }, h('strong', {}, name), h('span', { class: 'mono dim' }, `◆${cost}`)),
-          h('div', { class: 'small dim' }, desc + ' · never resets'),
-          h('button', { class: 'mini', onclick: () => { buyUpgrade(this.st, kind); this.render(); } }, 'Forge'),
-        ),
-      );
-    }
-    return v;
+    return latticeView(this.st, {
+      selected: this.selectedNode,
+      onSelect: (id) => {
+        this.selectedNode = id;
+        this.render();
+      },
+      onChanged: () => this.render(),
+    });
   }
 }

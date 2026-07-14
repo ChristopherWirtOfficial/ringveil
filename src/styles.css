@@ -82,14 +82,48 @@ button.danger { border-color: var(--danger); color: var(--danger); }
 .ring-glyph { flex-shrink: 0; }
 
 .ring-card {
-  display: flex; gap: 12px; align-items: center;
+  display: flex; gap: 12px; align-items: flex-start;
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 12px;
+  cursor: pointer;
 }
-.ring-card-body { min-width: 0; }
+.ring-card-body { min-width: 0; flex: 1; }
+.ring-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .ring-name { font-family: var(--display); font-size: 15px; }
-.ring-meta { font-size: 12.5px; color: var(--ink-dim); }
+.ring-meta { font-size: 12.5px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
 .ring-costs { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
+
+.status-chip {
+  font-size: 10.5px; font-family: var(--mono); white-space: nowrap;
+  padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--ink-dim);
+  flex-shrink: 0;
+}
+.status-chip.sparring { color: var(--verdigris); border-color: color-mix(in srgb, var(--verdigris) 50%, transparent); }
+.status-chip.away { color: #8f86a8; border-color: rgba(143, 134, 168, 0.4); }
+.calling-chip {
+  font-size: 10.5px; font-family: var(--mono); color: var(--bronze);
+  border: 1px solid color-mix(in srgb, var(--bronze) 45%, transparent);
+  border-radius: 999px; padding: 1px 8px; margin-left: 4px;
+}
+
+.xp-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.07); overflow: hidden; margin: 6px 0; }
+.xp-fill { height: 100%; background: color-mix(in srgb, var(--ink) 55%, transparent); border-radius: 2px; transition: width 0.5s; }
+
+.affix-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 5px; }
+.chip-affix {
+  font-size: 11px; font-family: var(--mono); color: var(--ink-dim);
+  border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
+}
+.chip-affix.tail { color: var(--bronze); border-color: color-mix(in srgb, var(--bronze) 55%, transparent); }
+.chip-affix.dormant { opacity: 0.55; border-style: dashed; }
+
+.rarity-dots { display: inline-flex; gap: 10px; align-items: baseline; }
+.rarity-dots .rd {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--ink-dim); font-family: var(--mono);
+}
+.rarity-dots i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .ring-expanded {
   margin-top: -6px; padding: 10px 12px 12px;
   border: 1px solid var(--line); border-top: none;
@@ -131,6 +165,26 @@ button.danger { border-color: var(--danger); color: var(--danger); }
 .node.owned { border-color: var(--verdigris); }
 .node-head { display: flex; justify-content: space-between; align-items: baseline; }
 .node button { margin-top: 8px; }
+button:disabled { opacity: 0.45; cursor: default; }
+
+/* ---- the Lattice constellation ---- */
+.lattice-map {
+  width: 100%; display: block;
+  background: radial-gradient(120% 90% at 50% 0%, #191d26 0%, #14161d 75%);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+.lattice-map text { font-family: var(--ui); }
+.lattice-cluster-label { font-family: var(--display); letter-spacing: 0.4px; }
+.lattice-node { cursor: pointer; }
+.node-pulse { animation: nodepulse 2.4s ease-in-out infinite; }
+@keyframes nodepulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.85; }
+}
+.lattice-detail {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; min-height: 76px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
