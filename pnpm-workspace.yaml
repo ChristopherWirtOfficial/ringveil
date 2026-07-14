@@ -1,0 +1,4 @@
+# pnpm settings live here as of pnpm 11 (moved out of package.json's "pnpm" field).
+# esbuild ships a native binary and needs its install script to run.
+allowBuilds:
+  esbuild: true

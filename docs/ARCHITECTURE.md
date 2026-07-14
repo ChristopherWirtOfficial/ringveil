@@ -1,7 +1,8 @@
 # Ringveil — Architecture
 
-Pipeline: TypeScript strict → esbuild → one self-contained HTML. Vanilla DOM
-+ canvas 2D, zero runtime dependencies. Aggressive file decomposition.
+Pipeline: TypeScript strict → Vite (esbuild under the hood) → one
+self-contained HTML via `vite-plugin-singlefile`. Vanilla DOM + canvas 2D,
+zero runtime dependencies. Aggressive file decomposition.
 
 ## Module map
 
@@ -65,9 +66,8 @@ silhouettes go in `canvas/draw.ts`.
 
 ## Testing
 
-- `node dist/smoke.cjs` after `node build.mjs` — buys the full resonance
-  cluster, runs training 600 ticks + a full expedition, asserts every
-  primitive fired.
+- `pnpm smoke` — buys the full resonance cluster, runs training 600 ticks +
+  a full expedition, asserts every primitive fired.
 - Fresh-start pacing target: a naked first run should die around waves 5–7
   (first Stillness), funding roughly one Lattice node. Re-run `freshcheck`
   after any tuning change.

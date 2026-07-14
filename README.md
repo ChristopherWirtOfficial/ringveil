@@ -6,20 +6,23 @@ fight, fall dull, and cycle. Prototype v0.
 
 ## Play
 
-Open `dist/ringveil.html` in any browser. It is a single self-contained file —
-no server, no dependencies.
+Run `pnpm build`, then open `dist/index.html` in any browser. It is a single
+self-contained file — no server, no dependencies.
 
 ## Develop
 
+Requires [pnpm](https://pnpm.io) (`npm install -g pnpm`).
+
 ```
-npm install
-npx tsc              # strict type check (noEmit)
-node build.mjs       # bundle → dist/ringveil.html + dist/smoke.cjs
-node dist/smoke.cjs  # headless engine sanity (exercises every primitive)
+pnpm install
+pnpm dev         # Vite dev server with HMR at localhost:5173
+pnpm typecheck   # strict tsc --noEmit
+pnpm build       # bundle → dist/index.html (single self-contained file)
+pnpm smoke       # headless engine sanity (exercises every primitive)
 ```
 
-`src/freshcheck.ts` is a pacing harness: sims 20 fresh-start expeditions and
-prints waves survived. Bundle it the same way smoke is bundled if tuning.
+`pnpm freshcheck` is a pacing harness: sims 20 fresh-start expeditions and
+prints waves survived. Run it after tuning.
 
 ## Read first
 

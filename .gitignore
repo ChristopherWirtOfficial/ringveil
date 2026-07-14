@@ -1,2 +1,6 @@
 node_modules/
 dist/
+
+# Tooling caches / local-only config
+.serena/
+.claude/settings.local.json

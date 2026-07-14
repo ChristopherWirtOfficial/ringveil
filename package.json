@@ -1,16 +1,26 @@
 {
   "name": "ringveil",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Incremental auto battler prototype where the units are rings.",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.13.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "smoke": "tsx src/smoke.ts",
+    "freshcheck": "tsx src/freshcheck.ts",
+    "check": "pnpm typecheck && pnpm build && pnpm smoke"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "esbuild": "^0.28.1",
-    "typescript": "^7.0.2"
+  "devDependencies": {
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.4",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }

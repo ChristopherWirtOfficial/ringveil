@@ -1,18 +1,19 @@
 # Ringveil
 
 Incremental auto battler prototype; the units are rings. Vanilla TS strict +
-canvas 2D, esbuild → one self-contained HTML, zero runtime deps, aggressive
-file decomposition.
+canvas 2D, Vite → one self-contained HTML, zero runtime deps, aggressive
+file decomposition. Package manager: pnpm.
 
 ## Commands
 
 ```
-npm install
-npx tsc                # strict check (noEmit) — must stay clean
-node build.mjs         # → dist/ringveil.html + dist/smoke.cjs
-node dist/smoke.cjs    # headless engine sanity — run after engine changes
-npx esbuild src/freshcheck.ts --bundle --platform=node --format=cjs \
-  --outfile=dist/fresh.cjs && node dist/fresh.cjs   # pacing after tuning
+pnpm install
+pnpm typecheck    # strict tsc --noEmit — must stay clean
+pnpm dev          # Vite dev server (HMR) at localhost:5173
+pnpm build        # → dist/index.html (single self-contained file)
+pnpm smoke        # headless engine sanity — run after engine changes
+pnpm freshcheck   # fresh-start pacing harness — run after tuning
+pnpm check        # typecheck + build + smoke in one shot
 ```
 
 ## Read before working
