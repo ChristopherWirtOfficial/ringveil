@@ -72,7 +72,7 @@ export interface LatticeFold {
 // ---------------- events (engines emit, UI listens) ----------------
 
 export type ExpeditionEvent =
-  | { t: 'summon'; ring: Ring; tether: number }
+  | { t: 'summon'; ring: Ring; tether: number; cost: number }
   | { t: 'attack'; ring: Ring; demonId: string; demon: string; dmg: number; echo: boolean; cresc: number }
   | { t: 'shatter'; demonId: string; demon: string; dmg: number }
   | { t: 'kill'; demonId: string; demon: string; ring: Ring }

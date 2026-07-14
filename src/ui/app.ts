@@ -58,7 +58,8 @@ export class App {
     this.expedition = new Expedition(this.st, rings);
     this.hush = new HushScene(this.st, this.expedition);
     this.expedition.events.on((e) => {
-      if (e.t === 'end') this.render();
+      // let the scene play the veil-closing beat before the summary appears
+      if (e.t === 'end') setTimeout(() => this.render(), 2200);
     });
     this.render();
   }
@@ -181,6 +182,31 @@ export class App {
       );
     });
     v.append(list);
+    // opener preview: mirror the engine's greedy fill (skip what doesn't fit)
+    if (this.st.loadout.length > 0) {
+      const cap = attCap(this.st);
+      const pool = tetherCap(this.st);
+      let att = 0;
+      let teth = 0;
+      let openers = 0;
+      for (const id of this.st.loadout) {
+        const ring = this.st.rings.find((r) => r.id === id);
+        if (!ring) continue;
+        const s = effStats(ring, f);
+        if (teth + s.tetherCost <= pool && att + s.attCost <= cap) {
+          teth += s.tetherCost;
+          att += s.attCost;
+          openers += 1;
+        }
+      }
+      v.append(
+        h(
+          'p',
+          { class: 'mono dim small opener-preview' },
+          `openers: ${openers} rings · ⟟${att}/${cap} window · ◈${teth} spent, ◈${pool - teth} left for re-summons`,
+        ),
+      );
+    }
     const bench = this.st.rings.filter((r) => !this.st.loadout.includes(r.id));
     if (bench.length > 0) {
       const benchRow = h('div', { class: 'bench-row' });
@@ -210,17 +236,31 @@ export class App {
   private viewSummary(ex: Expedition): HTMLElement {
     this.hush?.destroy();
     this.hush = null;
-    return h(
-      'section',
-      {},
-      h('h2', {}, 'The veil closes'),
+    const f = fold(this.st);
+    const v = h('section', {});
+    v.append(
+      h(
+        'div',
+        { class: 'section-head' },
+        h('h2', {}, 'The veil closes'),
+        ex.newBest ? h('span', { class: 'best-callout' }, '✦ a new best') : null,
+      ),
       h('p', {}, `You held for ${ex.wave} waves.`),
-      h('p', { class: 'mono' }, `+${ex.shardsEarned} ◆ shards`),
-      ex.drops.length > 0
-        ? h('div', {}, ...ex.drops.map((r) => ringCard(r, fold(this.st))))
-        : h('p', { class: 'dim small' }, 'No rings kept from this crossing.'),
-      h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => this.closeExpedition() }, 'Return home')),
+      h(
+        'p',
+        { class: 'mono dim small' },
+        `+${ex.shardsEarned}◆ shards · ${ex.kills} demons unmade` +
+          (ex.meltedCount > 0 ? ` · ${ex.meltedCount} drop${ex.meltedCount > 1 ? 's' : ''} melted (+${ex.meltedShards}◆)` : ''),
+      ),
     );
+    if (ex.drops.length > 0) {
+      v.append(h('h3', { class: 'cluster-label' }, 'Kept from the crossing'));
+      for (const r of ex.drops) v.append(ringCard(r, f));
+    } else {
+      v.append(h('p', { class: 'dim small' }, 'No rings kept from this crossing.'));
+    }
+    v.append(h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => this.closeExpedition() }, 'Return home')));
+    return v;
   }
 
   private moveLoadout(i: number, dir: number): void {

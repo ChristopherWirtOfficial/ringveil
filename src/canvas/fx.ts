@@ -60,6 +60,19 @@ export class Fx {
   }
 
   float(text: string, x: number, y: number, color: string, size = 13, serif = false): void {
+    // anti-collision: if a live floater already occupies this spot, stack
+    // the new one above it — echo bursts and focus fire stay readable
+    let bumped = true;
+    let guard = 0;
+    while (bumped && guard++ < 4) {
+      bumped = false;
+      for (const f of this.floaters) {
+        if (Math.abs(f.x - x) < 26 && Math.abs(f.y - y) < 13) {
+          y = f.y - 14;
+          bumped = true;
+        }
+      }
+    }
     this.floaters.push({ text, x, y, life: 0, max: 1.1, size, color, serif });
   }
 

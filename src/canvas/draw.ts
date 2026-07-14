@@ -24,28 +24,66 @@ export function hexA(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+/** Fraction of the canvas height where the Hush's dead ground sits. */
+export const HUSH_GROUND = 0.84;
+
+/** The far side of the veil: cold, airless, sound-dead. The inverse of the
+ *  proving grounds — indigo dark, a too-close sky, nothing warm anywhere. */
 export function hushBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#101218');
-  g.addColorStop(1, PAL.bg2);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
-  // faint drifting silence lines
-  ctx.strokeStyle = 'rgba(160,160,190,0.045)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 5; i++) {
-    const x = ((i * 0.23 + t * 0.008) % 1) * w;
+  const gy = h * HUSH_GROUND;
+  // cold sky, darkest at the top — the ceiling feels low
+  const sky = ctx.createLinearGradient(0, 0, 0, gy);
+  sky.addColorStop(0, '#0b0c12');
+  sky.addColorStop(0.6, '#11131c');
+  sky.addColorStop(1, '#151824');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, gy + 1);
+  // slow silence bands, barely-lit columns of dead air
+  ctx.lineWidth = 14;
+  for (let i = 0; i < 4; i++) {
+    const x = ((i * 0.27 + t * 0.006) % 1.1) * w;
+    const band = ctx.createLinearGradient(x - 10, 0, x + 10, 0);
+    band.addColorStop(0, 'rgba(120,116,150,0)');
+    band.addColorStop(0.5, 'rgba(120,116,150,0.03)');
+    band.addColorStop(1, 'rgba(120,116,150,0)');
+    ctx.strokeStyle = band;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
+    ctx.lineTo(x, gy);
     ctx.stroke();
   }
-  // ground
-  ctx.strokeStyle = 'rgba(233,228,216,0.12)';
+  ctx.lineWidth = 1;
+  // far shapes on the dead horizon — not hills; something more still
+  ctx.fillStyle = 'rgba(8,9,13,0.6)';
   ctx.beginPath();
-  ctx.moveTo(0, h * 0.86);
-  ctx.lineTo(w, h * 0.86);
+  ctx.ellipse(w * 0.68, gy + 14, w * 0.34, 20, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(w * 0.81 - 2, gy - 16, 4, 16);
+  ctx.fillRect(w * 0.9 - 1.5, gy - 9, 3, 9);
+  // horizon
+  ctx.strokeStyle = 'rgba(150,146,180,0.12)';
+  ctx.beginPath();
+  ctx.moveTo(0, gy);
+  ctx.lineTo(w, gy);
   ctx.stroke();
+  // dead ground, cold all the way down
+  const ground = ctx.createLinearGradient(0, gy, 0, h);
+  ground.addColorStop(0, '#13141e');
+  ground.addColorStop(1, '#0f1017');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, gy, w, h - gy);
+  // hairline cracks in the ground
+  ctx.strokeStyle = 'rgba(150,146,180,0.05)';
+  for (const [fx1, fx2] of [
+    [0.3, 0.36],
+    [0.55, 0.58],
+    [0.74, 0.81],
+  ] as const) {
+    ctx.beginPath();
+    ctx.moveTo(w * fx1, gy + (h - gy) * 0.4);
+    ctx.lineTo(w * fx2, gy + (h - gy) * 0.75);
+    ctx.stroke();
+  }
 }
 
 /** Fraction of the canvas height where the Proving's ground line sits.
@@ -99,18 +137,40 @@ export function provingBackground(ctx: CanvasRenderingContext2D, w: number, h: n
   }
 }
 
-export function drawVeil(ctx: CanvasRenderingContext2D, x: number, h: number, t: number): void {
-  const g = ctx.createLinearGradient(x - 18, 0, x + 18, 0);
+/** The veil: the only way home, and the visual seat of the Tether pool.
+ *  `intensity` (0..1) is the pool's fullness — the veil IS the gauge.
+ *  `flicker` warns when the thread is nearly spent. */
+export function drawVeil(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  h: number,
+  t: number,
+  opts?: { intensity?: number; flicker?: boolean },
+): void {
+  const k = opts?.intensity ?? 1;
+  let a = 0.35 + 0.45 * k;
+  if (opts?.flicker) a *= 0.55 + 0.45 * Math.abs(Math.sin(t * 7.3) * Math.sin(t * 3.1));
+  const glowW = 14 + 12 * k;
+  const g = ctx.createLinearGradient(x - glowW, 0, x + glowW, 0);
   g.addColorStop(0, 'rgba(99,165,140,0)');
-  g.addColorStop(0.5, 'rgba(99,165,140,0.16)');
+  g.addColorStop(0.5, hexA(PAL.verdigris, 0.1 + 0.12 * k));
   g.addColorStop(1, 'rgba(99,165,140,0)');
   ctx.fillStyle = g;
-  ctx.fillRect(x - 18, 0, 36, h);
-  ctx.strokeStyle = 'rgba(99,165,140,0.35)';
-  ctx.lineWidth = 1;
+  ctx.fillRect(x - glowW, 0, glowW * 2, h);
+  ctx.strokeStyle = hexA(PAL.verdigris, a);
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   for (let y = 0; y <= h; y += 6) {
-    const wob = Math.sin(y * 0.05 + t * 1.6) * 3;
+    const wob = Math.sin(y * 0.05 + t * 1.6) * (2 + 2 * k);
+    if (y === 0) ctx.moveTo(x + wob, y);
+    else ctx.lineTo(x + wob, y);
+  }
+  ctx.stroke();
+  // a second, fainter thread — the veil is woven
+  ctx.strokeStyle = hexA(PAL.verdigris, a * 0.4);
+  ctx.beginPath();
+  for (let y = 0; y <= h; y += 6) {
+    const wob = Math.sin(y * 0.045 + t * 1.1 + 2) * (3 + 2 * k);
     if (y === 0) ctx.moveTo(x + wob, y);
     else ctx.lineTo(x + wob, y);
   }

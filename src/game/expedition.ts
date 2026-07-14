@@ -41,6 +41,11 @@ export class Expedition {
   shardsEarned = 0;
   drops: Ring[] = [];
   over = false;
+  // recounting for the summary — the run should be able to tell its story
+  kills = 0;
+  meltedCount = 0;
+  meltedShards = 0;
+  newBest = false;
 
   constructor(private st: GameState, loadout: Ring[]) {
     this.queue = [...loadout];
@@ -67,7 +72,7 @@ export class Expedition {
       this.queue.splice(i, 1);
       this.tether -= s.tetherCost;
       this.worn.push({ ring, s, luster: s.maxLuster, cd: s.interval, cresc: 0 });
-      this.events.emit({ t: 'summon', ring, tether: this.tether });
+      this.events.emit({ t: 'summon', ring, tether: this.tether, cost: s.tetherCost });
       return true;
     }
     return false;
@@ -122,6 +127,7 @@ export class Expedition {
 
   private onKill(w: Worn, d: DemonInst): void {
     this.demons = this.demons.filter((x) => x !== d);
+    this.kills += 1;
     this.events.emit({ t: 'kill', demonId: d.id, demon: d.def.name, ring: w.ring });
     if (w.s.knellChance > 0 && this.st.rng.chance(w.s.knellChance)) {
       const amt = w.s.knellAmount;
@@ -183,6 +189,8 @@ export class Expedition {
       if (ring.rarity < this.st.keepThreshold && ring.rarity !== 4) {
         const v = meltValue(ring);
         this.shardsEarned += v;
+        this.meltedCount += 1;
+        this.meltedShards += v;
         this.events.emit({ t: 'drop', ring, melted: true, shards: v });
       } else {
         this.drops.push(ring);
@@ -195,7 +203,10 @@ export class Expedition {
     this.over = true;
     this.st.shards += this.shardsEarned;
     this.st.rings.push(...this.drops);
-    if (this.wave > this.st.bestWave) this.st.bestWave = this.wave;
+    if (this.wave > this.st.bestWave) {
+      this.st.bestWave = this.wave;
+      this.newBest = true;
+    }
     this.events.emit({ t: 'end', won: false, waves: this.wave, shards: this.shardsEarned });
   }
 
