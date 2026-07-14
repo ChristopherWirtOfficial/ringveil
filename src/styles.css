@@ -101,15 +101,6 @@ button.danger { border-color: var(--danger); color: var(--danger); }
   border-radius: 6px; padding: 5px 8px; font-size: 13px;
 }
 
-.train-row, .worn-row { display: flex; flex-wrap: wrap; gap: 12px; }
-.train-cell, .worn-cell {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  width: 84px; text-align: center;
-  padding: 8px 4px; border-radius: 10px;
-}
-.train-cell.bonus { outline: 1px dashed var(--verdigris); }
-.cresc { color: var(--bronze); letter-spacing: 2px; }
-
 .demon-row { display: flex; flex-direction: column; gap: 8px; }
 .demon { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .demon-name { margin-bottom: 4px; }
@@ -153,5 +144,5 @@ button.danger { border-color: var(--danger); color: var(--danger); }
   border-radius: 12px;
   background: var(--bg);
 }
-.scene-canvas.proving { height: 42vh; min-height: 260px; }
+.scene-canvas.proving { height: 46vh; min-height: 300px; }
 .scene-canvas.hush { height: 48vh; min-height: 300px; }

@@ -22,6 +22,16 @@ interface Floater {
   serif: boolean;
 }
 
+interface Pulse {
+  x: number;
+  y: number;
+  r: number;
+  life: number;
+  max: number;
+  color: string;
+  width: number;
+}
+
 const MONO = 'ui-monospace, Menlo, monospace';
 const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
 
@@ -29,6 +39,7 @@ const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif'
 export class Fx {
   private particles: Particle[] = [];
   private floaters: Floater[] = [];
+  private pulses: Pulse[] = [];
 
   burst(x: number, y: number, color: string, n = 10, speed = 90, size = 2.4): void {
     const count = REDUCED_MOTION ? Math.ceil(n / 3) : n;
@@ -52,6 +63,11 @@ export class Fx {
     this.floaters.push({ text, x, y, life: 0, max: 1.1, size, color, serif });
   }
 
+  /** An expanding stroke ring — level-ups, blooms, pops. */
+  pulse(x: number, y: number, r: number, color: string, width = 2): void {
+    this.pulses.push({ x, y, r, life: 0, max: 0.55, color, width });
+  }
+
   update(dt: number): void {
     for (const p of this.particles) {
       p.life += dt;
@@ -66,6 +82,8 @@ export class Fx {
       f.y -= 26 * dt;
     }
     this.floaters = this.floaters.filter((f) => f.life < f.max);
+    for (const p of this.pulses) p.life += dt;
+    this.pulses = this.pulses.filter((p) => p.life < p.max);
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
@@ -76,6 +94,17 @@ export class Fx {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size * a + 0.4, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (const p of this.pulses) {
+      const k = p.life / p.max;
+      const rr = REDUCED_MOTION ? p.r : p.r * (0.35 + 0.65 * k);
+      ctx.globalAlpha = (1 - k) * 0.9;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = p.width;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
     for (const f of this.floaters) {

@@ -16,6 +16,14 @@ export const PAL = {
 export const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
 export const MONO = 'ui-monospace, Menlo, monospace';
 
+/** '#rrggbb' → 'rgba(r,g,b,a)' — for alpha variants of palette colors. */
+export function hexA(hex: string, a: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 export function hushBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void {
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, '#101218');
@@ -40,17 +48,55 @@ export function hushBackground(ctx: CanvasRenderingContext2D, w: number, h: numb
   ctx.stroke();
 }
 
+/** Fraction of the canvas height where the Proving's ground line sits.
+ *  Shared between the background and the scene's layout. */
+export const PROVING_HORIZON = 0.64;
+
+/** The proving grounds at home: warm dusk, far hills, elder menhirs on the
+ *  horizon. The counterpoint to the Hush — hearth-lit where the Hush is cold. */
 export function provingBackground(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#191c21');
-  g.addColorStop(1, '#1b1e17');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(233,228,216,0.1)';
+  const gy = h * PROVING_HORIZON;
+  // dusk sky, warming toward the horizon
+  const sky = ctx.createLinearGradient(0, 0, 0, gy);
+  sky.addColorStop(0, '#171a21');
+  sky.addColorStop(0.72, '#1d1c1b');
+  sky.addColorStop(1, '#242017');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, gy + 1);
+  // far hills, barely darker than the sky
+  ctx.fillStyle = 'rgba(15,17,22,0.55)';
   ctx.beginPath();
-  ctx.moveTo(0, h * 0.82);
-  ctx.lineTo(w, h * 0.82);
+  ctx.ellipse(w * 0.28, gy + 20, w * 0.42, 30, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(w * 0.82, gy + 22, w * 0.4, 27, 0, Math.PI, 0);
+  ctx.fill();
+  // elder menhirs — other rings proved here once
+  ctx.fillStyle = 'rgba(10,11,15,0.5)';
+  ctx.fillRect(w * 0.13 - 2.5, gy - 13, 5, 13);
+  ctx.fillRect(w * 0.2 - 1.5, gy - 8, 3, 8);
+  ctx.fillRect(w * 0.89 - 2, gy - 10, 4, 10);
+  // horizon
+  ctx.strokeStyle = 'rgba(233,228,216,0.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, gy);
+  ctx.lineTo(w, gy);
   ctx.stroke();
+  // ground apron, warm fading down to the app's own dark
+  const ground = ctx.createLinearGradient(0, gy, 0, h);
+  ground.addColorStop(0, '#201c12');
+  ground.addColorStop(1, '#171922');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, gy, w, h - gy);
+  // faint strata on the apron
+  ctx.strokeStyle = 'rgba(233,228,216,0.03)';
+  for (const f of [0.35, 0.68]) {
+    ctx.beginPath();
+    ctx.moveTo(0, gy + (h - gy) * f);
+    ctx.lineTo(w, gy + (h - gy) * f);
+    ctx.stroke();
+  }
 }
 
 export function drawVeil(ctx: CanvasRenderingContext2D, x: number, h: number, t: number): void {
@@ -88,7 +134,9 @@ function aspectNotch(ctx: CanvasRenderingContext2D, x: number, y: number, r: num
   }
 }
 
-/** The signature carries over: a ring is an annulus, its luster the arc. */
+/** The signature carries over: a ring is an annulus, its luster the arc.
+ *  `inner` draws a second, thinner arc inside — the Proving uses it for the
+ *  engine's continuous XP truth. `glow` haloes in the ring's own rarity color. */
 export function drawRing(
   ctx: CanvasRenderingContext2D,
   ring: Ring,
@@ -96,13 +144,14 @@ export function drawRing(
   y: number,
   r: number,
   frac: number,
-  opts?: { dull?: boolean; glow?: boolean },
+  opts?: { dull?: boolean; glow?: boolean; inner?: number },
 ): void {
   const color = opts?.dull ? 'rgba(160,160,160,0.4)' : RARITY_COLORS[ring.rarity]!;
   if (opts?.glow && !opts.dull) {
+    const rc = RARITY_COLORS[ring.rarity]!;
     const g = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 2.2);
-    g.addColorStop(0, 'rgba(201,145,63,0.10)');
-    g.addColorStop(1, 'rgba(201,145,63,0)');
+    g.addColorStop(0, hexA(rc, 0.12));
+    g.addColorStop(1, hexA(rc, 0));
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
@@ -118,6 +167,20 @@ export function drawRing(
   ctx.beginPath();
   ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, Math.min(1, frac)));
   ctx.stroke();
+  if (opts?.inner !== undefined && !opts.dull) {
+    const ir = r * 0.55;
+    ctx.lineWidth = Math.max(1.5, r * 0.13);
+    ctx.strokeStyle = 'rgba(233,228,216,0.14)';
+    ctx.beginPath();
+    ctx.arc(x, y, ir, 0, Math.PI * 2);
+    ctx.stroke();
+    if (opts.inner > 0.01) {
+      ctx.strokeStyle = 'rgba(233,228,216,0.55)';
+      ctx.beginPath();
+      ctx.arc(x, y, ir, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, opts.inner));
+      ctx.stroke();
+    }
+  }
   if (!opts?.dull) aspectNotch(ctx, x, y, r, ring.aspect);
 }
 

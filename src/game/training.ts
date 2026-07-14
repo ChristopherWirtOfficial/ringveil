@@ -32,6 +32,12 @@ export class Training {
     return this.st.rings.filter((r) => !this.away.has(r.id) && !activeIds.has(r.id));
   }
 
+  /** Read-only view for renderers: rings waiting at home, in rotation order.
+   *  The front of this list is the next to step in. */
+  get queued(): Ring[] {
+    return this.eligible();
+  }
+
   private capacity(): number {
     return trainSlots(this.st) + this.bonusQuota;
   }
